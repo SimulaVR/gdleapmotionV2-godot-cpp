@@ -18,8 +18,8 @@
 #include <thread>
 #include <vector>
 
-// include leap motion library
-#include <LeapC.h>
+//#include <LeapC.h>
+#include <Leap.h>
 
 namespace godot {
 
@@ -27,11 +27,21 @@ class GDLMSensor : public Spatial {
 	GODOT_CLASS(GDLMSensor, Spatial)
 
 private:
-	LEAP_CONNECTION leap_connection;
-	LEAP_CLOCK_REBASER clock_synchronizer;
-	const LEAP_TRACKING_EVENT *last_frame;
-	LEAP_DEVICE_INFO *last_device;
-	long long int last_frame_id;
+	//LEAP_CONNECTION leap_connection;
+  Leap::Controller controller;
+  GDLMListener listener;
+
+	//LEAP_CLOCK_REBASER clock_synchronizer;
+
+	//const LEAP_TRACKING_EVENT *last_frame;
+  const Leap::Frame *last_frame;
+
+	//LEAP_DEVICE_INFO *last_device;
+  Leap::Device *last_device
+
+	//long long int last_frame_id;
+  int64_t last_frame_id;
+
 	bool is_running;
 	bool is_connected;
 	bool arvr;
@@ -41,10 +51,9 @@ private:
 	Transform hmd_transform; /* for ARVR only, transform of our primary HMD */
 	Transform hmd_to_leap_motion; /* for ARVR only, transform to adjust leap motion */
 
-	std::thread *lm_thread;
-	std::mutex lm_mutex;
+	//std::thread *lm_thread;
+	//std::mutex lm_mutex;
 
-	// some handy things for defining our hands
 	static const char *const finger[];
 	static const char *const finger_bone[];
 
@@ -71,40 +80,46 @@ private:
 	void delete_hand(GDLMSensor::hand_data *p_hand_data);
 
 	// return result state as a string
-	const char *ResultString(eLeapRS r);
+	// const char *ResultString(eLeapRS r);
 
 	// these are handlers for all the messages LeapC sends us
-	void handleConnectionEvent(const LEAP_CONNECTION_EVENT *connection_event);
-	void handleConnectionLostEvent(const LEAP_CONNECTION_LOST_EVENT *connection_lost_event);
-	void handleDeviceEvent(const LEAP_DEVICE_EVENT *device_event);
-	void handleDeviceLostEvent(const LEAP_DEVICE_EVENT *device_event);
-	void handleDeviceFailureEvent(const LEAP_DEVICE_FAILURE_EVENT *device_failure_event);
-	void handleTrackingEvent(const LEAP_TRACKING_EVENT *tracking_event);
-	void handleLogEvent(const LEAP_LOG_EVENT *log_event);
-	void handleLogEvents(const LEAP_LOG_EVENTS *log_events);
-	void handlePolicyEvent(const LEAP_POLICY_EVENT *policy_event);
-	void handleConfigChangeEvent(const LEAP_CONFIG_CHANGE_EVENT *config_change_event);
-	void handleConfigResponseEvent(const LEAP_CONFIG_RESPONSE_EVENT *config_response_event);
-	void handleImageEvent(const LEAP_IMAGE_EVENT *image_event);
-	void handlePointMappingChangeEvent(const LEAP_POINT_MAPPING_CHANGE_EVENT *point_mapping_change_event);
-	void handleHeadPoseEvent(const LEAP_HEAD_POSE_EVENT *head_pose_event);
+	// void handleConnectionEvent(const LEAP_CONNECTION_EVENT *connection_event);
+	// void handleConnectionLostEvent(const LEAP_CONNECTION_LOST_EVENT *connection_lost_event);
+	// void handleDeviceEvent(const LEAP_DEVICE_EVENT *device_event);
+	// void handleDeviceLostEvent(const LEAP_DEVICE_EVENT *device_event);
+	// void handleDeviceFailureEvent(const LEAP_DEVICE_FAILURE_EVENT *device_failure_event);
+	// void handleTrackingEvent(const LEAP_TRACKING_EVENT *tracking_event);
+	// void handleLogEvent(const LEAP_LOG_EVENT *log_event);
+	// void handleLogEvents(const LEAP_LOG_EVENTS *log_events);
+	// void handlePolicyEvent(const LEAP_POLICY_EVENT *policy_event);
+	// void handleConfigChangeEvent(const LEAP_CONFIG_CHANGE_EVENT *config_change_event);
+	// void handleConfigResponseEvent(const LEAP_CONFIG_RESPONSE_EVENT *config_response_event);
+	// void handleImageEvent(const LEAP_IMAGE_EVENT *image_event);
+	// void handlePointMappingChangeEvent(const LEAP_POINT_MAPPING_CHANGE_EVENT *point_mapping_change_event);
+	// void handleHeadPoseEvent(const LEAP_HEAD_POSE_EVENT *head_pose_event);
 
 protected:
-	void lock();
-	void unlock();
+	//void lock();
+	//void unlock();
 
-	const LEAP_TRACKING_EVENT *get_last_frame();
-	void set_last_frame(const LEAP_TRACKING_EVENT *p_frame);
-	const LEAP_DEVICE_INFO *get_last_device();
-	void set_last_device(const LEAP_DEVICE_INFO *p_device);
+	//const LEAP_TRACKING_EVENT *get_last_frame();
+  const Leap::Frame *get_last_frame();
+	//void set_last_frame(const LEAP_TRACKING_EVENT *p_frame);
+  void set_last_frame(const Leap::Frame *p_frame);
+	//const LEAP_DEVICE_INFO *get_last_device();
+  const Leap::Device *get_last_device();
+	//void set_last_device(const LEAP_DEVICE_INFO *p_device);
+	void set_last_device(const Leap::Device *p_device);
 
 	void set_is_running(bool p_set);
 	void set_is_connected(bool p_set);
 
 	bool wait_for_connection(int timeout = 5000, int waittime = 1100);
 
-	void update_hand_data(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand);
-	void update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand);
+	//void update_hand_data(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand);
+	void update_hand_data(GDLMSensor::hand_data *p_hand_data, Leap::Hand *p_leap_hand);
+	//void update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand);
+	void update_hand_position(GDLMSensor::hand_data *p_hand_data, Leap::Hand *p_leap_hand);
 
 public:
 	static void _register_methods();
@@ -142,6 +157,25 @@ public:
 	void _physics_process(float delta);
 };
 
+class GDLMListener : public Leap::Listener {
+  public:
+    virtual void onConnect(const Leap::Controller&);
+    virtual void onDeviceChange(const Leap::Controller&);
+    virtual void onDeviceFailure(const Leap::Controller&);
+    virtual void onDisconnect(const Leap::Controller&);
+    virtual void onExit(const Leap::Controller&);
+    virtual void onFocusGained(const Leap::Controller&);
+    virtual void onFrame(const Leap::Controller&);
+    virtual void onImages(const Leap::Controller&);
+    virtual void onInit(const Leap::Controller&);
+    virtual void onLogMessage(const Leap::Controller&, Leap::MessageSeverity severity, int64_t timestamp, const char *msg);
+    virtual void onServiceChange(const Leap::Controller&);
+    virtual void onServiceConnect(const Leap::Controller&);
+    virtual void onServiceDisconnect(const Leap::Controller&);
+};
+
 } // namespace godot
+
+
 
 #endif /* !GDLM_SENSOR_H */

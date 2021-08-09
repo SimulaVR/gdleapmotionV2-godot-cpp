@@ -53,8 +53,8 @@ void GDLMSensor::_init() {
 GDLMSensor::GDLMSensor() {
 	printf("Construct leap motion\n");
 
-	clock_synchronizer = NULL;
-	lm_thread = NULL;
+	// clock_synchronizer = NULL;
+	// lm_thread = NULL;
 	is_running = false;
 	is_connected = false;
 	arvr = false;
@@ -69,48 +69,53 @@ GDLMSensor::GDLMSensor() {
 	hmd_to_leap_motion.basis = Basis(Vector3(90.0f * PI / 180.0f, -180.0f * PI / 180.0f, 0.0f));
 	hmd_to_leap_motion.origin = Vector3(0.0f, 0.0f, -0.08f);
 
-	eLeapRS result = LeapCreateConnection(NULL, &leap_connection);
-	if (result == eLeapRS_Success) {
-		result = LeapOpenConnection(leap_connection);
-		if (result == eLeapRS_Success) {
-			set_is_running(true);
-			lm_thread = new std::thread(GDLMSensor::lm_main, this);
-		} else {
-			LeapDestroyConnection(leap_connection);
-			leap_connection = NULL;
-		}
-	}
+	// eLeapRS result = LeapCreateConnection(NULL, &leap_connection);
+	// if (result == eLeapRS_Success) {
+	// 	result = LeapOpenConnection(leap_connection);
+	// 	if (result == eLeapRS_Success) {
+	// 		set_is_running(true);
+	// 		lm_thread = new std::thread(GDLMSensor::lm_main, this);
+	// 	} else {
+	// 		LeapDestroyConnection(leap_connection);
+	// 		leap_connection = NULL;
+	// 	}
+	// }
+  while (!controller.isConnected()) {
+    printf("Waiting for controller to connect..");
+  }
+  controller.addListener(listener);
+  set_is_running(true);
 }
 
 GDLMSensor::~GDLMSensor() {
 	printf("Cleanup leap motion\n");
 
-	if (lm_thread != NULL) {
+	//if (lm_thread != NULL) {
 		// if our loop is still running, this will exit it...
 		set_is_running(false);
 		set_is_connected(false);
 
 		// join up with our thread if it hasn't already completed
-		lm_thread->join();
+		//lm_thread->join();
 
 		// and cleanup our thread
-		delete lm_thread;
-		lm_thread = NULL;
-	}
+		//delete lm_thread;
+		//lm_thread = NULL;
+	//}
 
 	// our thread should no longer be running so save to clean up..
-	if (clock_synchronizer != NULL) {
-		LeapDestroyClockRebaser(clock_synchronizer);
-		clock_synchronizer = NULL;
-	}
-	if (leap_connection != NULL) {
-		LeapDestroyConnection(leap_connection);
+	//if (clock_synchronizer != NULL) {
+	//	LeapDestroyClockRebaser(clock_synchronizer);
+	//	clock_synchronizer = NULL;
+	//}
+	//if (leap_connection != NULL) {
+	//	LeapDestroyConnection(leap_connection);
 		leap_connection = NULL;
-	}
+	//}
 
 	if (last_device != NULL) {
 		// free the space we allocated for our serial number
-		::free(last_device->serial);
+		//::free(last_device->serial);
 
 		// free our device
 		::free(last_device);
@@ -128,63 +133,66 @@ GDLMSensor::~GDLMSensor() {
 	}
 }
 
-void GDLMSensor::lock() {
-	lm_mutex.lock();
-}
+// void GDLMSensor::lock() {
+// 	lm_mutex.lock();
+// }
 
-void GDLMSensor::unlock() {
-	lm_mutex.unlock();
-}
+// void GDLMSensor::unlock() {
+// 	lm_mutex.unlock();
+// }
 
 bool GDLMSensor::get_is_running() {
 	bool ret;
 
-	lock();
+	// lock();
 	ret = is_running;
-	unlock();
+	// unlock();
 
 	return ret;
 }
 
 void GDLMSensor::set_is_running(bool p_set) {
-	lock();
+	// lock();
 	is_running = p_set;
 	// maybe issue signal?
-	unlock();
+	// unlock();
 }
 
 bool GDLMSensor::get_is_connected() {
 	bool ret;
 
-	lock();
+	// lock();
 	ret = is_connected;
-	unlock();
+	// unlock();
 
 	return ret;
 }
 
 void GDLMSensor::set_is_connected(bool p_set) {
-	lock();
+	// lock();
 	if (is_connected != p_set) {
 		is_connected = p_set;
 		if (p_set) {
-			LeapCreateClockRebaser(&clock_synchronizer);
+			// LeapCreateClockRebaser(&clock_synchronizer);
 
 			if (arvr) {
 				printf("Setting arvr to true\n");
-				LeapSetPolicyFlags(leap_connection, eLeapPolicyFlag_OptimizeHMD, 0);
+				//LeapSetPolicyFlags(leap_connection, eLeapPolicyFlag_OptimizeHMD, 0);
+        controller.setPolicy(POLICY_OPTIMIZE_HMD);
 			} else {
 				printf("Setting arvr to false\n");
-				LeapSetPolicyFlags(leap_connection, 0, eLeapPolicyFlag_OptimizeHMD);
+				//LeapSetPolicyFlags(leap_connection, 0, eLeapPolicyFlag_OptimizeHMD);
+        controller.clearPolicy(POLICY_OPTIMIZE_HMD);
 			}
-		} else if (clock_synchronizer != NULL) {
-			LeapDestroyClockRebaser(clock_synchronizer);
-			clock_synchronizer = NULL;
 		}
+    //   else if (clock_synchronizer != NULL) {
+		// 	LeapDestroyClockRebaser(clock_synchronizer);
+		// 	clock_synchronizer = NULL;
+		// }
 
 		// maybe issue signal?
 	}
-	unlock();
+	// unlock();
 }
 
 bool GDLMSensor::wait_for_connection(int timeout, int waittime) {
@@ -198,51 +206,57 @@ bool GDLMSensor::wait_for_connection(int timeout, int waittime) {
 	return get_is_connected();
 }
 
-const LEAP_TRACKING_EVENT *GDLMSensor::get_last_frame() {
-	const LEAP_TRACKING_EVENT *ret;
+//const LEAP_TRACKING_EVENT *GDLMSensor::get_last_frame() {
+const Leap::Frame *GDLMSensor::get_last_frame() {
+	//const LEAP_TRACKING_EVENT *ret;
+	const Leap::Frame *ret;
 
-	lock();
+	// lock();
 	ret = last_frame;
-	unlock();
+	// unlock();
 
 	return ret;
 }
 
-void GDLMSensor::set_last_frame(const LEAP_TRACKING_EVENT *p_frame) {
-	lock();
+//void GDLMSensor::set_last_frame(const LEAP_TRACKING_EVENT *p_frame) {
+void GDLMSensor::set_last_frame(const Leap::Frame *p_frame) {
+	// lock();
 	last_frame = p_frame;
-	unlock();
+	// unlock();
 }
 
-const LEAP_DEVICE_INFO *GDLMSensor::get_last_device() {
-	const LEAP_DEVICE_INFO *ret;
+//const LEAP_DEVICE_INFO *GDLMSensor::get_last_device() {
+const Leap::Device *GDLMSensor::get_last_device() {
+	const Leap::Device *ret;
 
-	lock();
+	// lock();
 	ret = last_device;
-	unlock();
+	// unlock();
 
 	return ret;
 }
 
-void GDLMSensor::set_last_device(const LEAP_DEVICE_INFO *p_device) {
-	lock();
+//void GDLMSensor::set_last_device(const LEAP_DEVICE_INFO *p_device) {
+void GDLMSensor::set_last_device(const Leap::Device *p_device) {
+	// lock();
 
 	if (last_device != NULL) {
 		// free the space we allocated for our serial number
-		::free(last_device->serial);
+		//::free(last_device->serial);
 	} else {
 		// allocate memory to store our device in
-		last_device = (LEAP_DEVICE_INFO *)malloc(sizeof(*p_device));
+		//last_device = (LEAP_DEVICE_INFO *)malloc(sizeof(*p_device));
+		last_device = (Leap::Device *)malloc(sizeof(*p_device));
 	}
 
 	// make a copy of our settings
 	*last_device = *p_device;
 
 	// but allocate our own buffer for the serial number
-	last_device->serial = (char *)malloc(p_device->serial_length);
-	memcpy(last_device->serial, p_device->serial, p_device->serial_length);
+	//last_device->serial = (char *)malloc(p_device->serial_length);
+	// memcpy(last_device->serial, p_device->serial, p_device->serial_length);
 
-	unlock();
+	// unlock();
 }
 
 bool GDLMSensor::get_arvr() const {
@@ -250,22 +264,24 @@ bool GDLMSensor::get_arvr() const {
 }
 
 void GDLMSensor::set_arvr(bool p_set) {
-	lock();
+	// lock();
 
 	if (arvr != p_set) {
 		arvr = p_set;
 		if (is_connected) {
 			if (arvr) {
 				printf("Setting arvr to true\n");
-				LeapSetPolicyFlags(leap_connection, eLeapPolicyFlag_OptimizeHMD, 0);
+				//LeapSetPolicyFlags(leap_connection, eLeapPolicyFlag_OptimizeHMD, 0);
+        controller.setPolicy(POLICY_OPTIMIZE_HMD);
 			} else {
 				printf("Setting arvr to false\n");
-				LeapSetPolicyFlags(leap_connection, 0, eLeapPolicyFlag_OptimizeHMD);
+				//LeapSetPolicyFlags(leap_connection, 0, eLeapPolicyFlag_OptimizeHMD);
+        controller.clearPolicy(POLICY_OPTIMIZE_HMD);
 			}
 		}
 	}
 
-	unlock();
+	// unlock();
 
 /*	if (arvr != p_set) {
 		if (leap_connection != NULL) {
@@ -372,7 +388,8 @@ String GDLMSensor::get_finger_bone_name(int p_idx) {
 	return finger_bone_name;
 }
 
-void GDLMSensor::update_hand_data(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand) {
+//void GDLMSensor::update_hand_data(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand) {
+void GDLMSensor::update_hand_data(GDLMSensor::hand_data *p_hand_data, Leap::Hand *p_leap_hand) {
 	Array args;
 
 	if (p_hand_data == NULL)
@@ -382,21 +399,25 @@ void GDLMSensor::update_hand_data(GDLMSensor::hand_data *p_hand_data, LEAP_HAND 
 		return;
 
 	// first pinch distance
-	args.push_back(Variant(p_leap_hand->pinch_distance));
+	//args.push_back(Variant(p_leap_hand->pinch_distance));
+	args.push_back(Variant(p_leap_hand->pinchDistance()));
 	p_hand_data->scene->call("set_pinch_distance", args);
 
 	// then pinch strength
 	args.clear();
-	args.push_back(Variant(p_leap_hand->pinch_strength));
+	//args.push_back(Variant(p_leap_hand->pinch_strength));
+	args.push_back(Variant(p_leap_hand->pinchStrength()));
 	p_hand_data->scene->call("set_pinch_strength", args);
 
 	// and grab strength
 	args.clear();
-	args.push_back(Variant(p_leap_hand->grab_strength));
+	//args.push_back(Variant(p_leap_hand->grab_strength));
+	args.push_back(Variant(p_leap_hand->grabStrength()));
 	p_hand_data->scene->call("set_grab_strength", args);
 };
 
-void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand) {
+//void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_HAND *p_leap_hand) {
+void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, Leap::Hand *p_leap_hand) {
 	Transform hand_transform;
 
 	if (p_hand_data == NULL)
@@ -406,17 +427,27 @@ void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_H
 		return;
 
 	// orientation of our hand using LeapC quarternion
-	Quat quat(p_leap_hand->palm.orientation.x, p_leap_hand->palm.orientation.y, p_leap_hand->palm.orientation.z, p_leap_hand->palm.orientation.w);
-	Basis base_orientation(quat);
+	// Quat quat(p_leap_hand->palm.orientation.x, p_leap_hand->palm.orientation.y, p_leap_hand->palm.orientation.z, p_leap_hand->palm.orientation.w);
+	// Basis base_orientation(quat);
+
+  Leap::Matrix mat = p_leap_hand->basis();
+  Basis base_orientation( Vector3(mat.xBasis.x, mat.xBasis.y, mat.xBasis.z)
+                        , Vector3(mat.yBasis.x, mat.yBasis.y, mat.yBasis.z)
+                        , Vector3(mat.zBasis.x, mat.zBasis.y, mat.zBasis.z));
 
 	// apply to our transform
 	hand_transform.set_basis(base_orientation);
 
 	// position of our hand
-	Vector3 hand_position(
-			p_leap_hand->palm.position.x * world_scale,
-			p_leap_hand->palm.position.y * world_scale,
-			p_leap_hand->palm.position.z * world_scale);
+	// Vector3 hand_position(
+	// 		p_leap_hand->palm.position.x * world_scale,
+	// 		p_leap_hand->palm.position.y * world_scale,
+	// 		p_leap_hand->palm.position.z * world_scale);
+  Leap::Vector palmPosition = p_leap_hand->palmPosition();
+  Vector3 hand_position(
+      palmPosition.x * world_scale,
+      palmPosition.y * world_scale,
+      palmPosition.z * world_scale);
 	hand_transform.set_origin(hand_position);
 
 	// get our inverse for positioning the rest of the hand
@@ -438,8 +469,11 @@ void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_H
 
 	// lets parse our digits
 	for (int d = 0; d < 5; d++) {
-		LEAP_DIGIT *digit = &p_leap_hand->digits[d];
-		LEAP_BONE *bone = &digit->bones[0];
+		//LEAP_DIGIT *digit = &p_leap_hand->digits[d];
+    Leap::FingerList digits = p_leap_hand->fingers();
+		Leap::Finger *digit = &fingers->digits[d];
+		//LEAP_BONE *bone = &digit->bones[0];
+		Leap::Bone *bone = &digit->bone(0);
 
 		// logic for positioning stuff
 		Transform parent_inverse = hand_inverse;
@@ -447,10 +481,15 @@ void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_H
 		Transform bone_pose;
 
 		// Our first bone provides our starting position for our first node
+		// Vector3 bone_start_pos(
+		// 		bone->prev_joint.x * world_scale,
+		// 		bone->prev_joint.y * world_scale,
+		// 		bone->prev_joint.z * world_scale);
+    Leap::Vector prevJoint = bone.prevJoint();
 		Vector3 bone_start_pos(
-				bone->prev_joint.x * world_scale,
-				bone->prev_joint.y * world_scale,
-				bone->prev_joint.z * world_scale);
+				prevJoint.x * world_scale,
+				prevJoint.y * world_scale,
+				prevJoint.z * world_scale);
 		bone_start_pos = parent_inverse.xform(bone_start_pos);
 		bone_pose.origin = bone_start_pos;
 
@@ -460,7 +499,8 @@ void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_H
 			// And handle our bones.
 			int first_bone = d == 0 ? 1 : 0; // we skip the first bone for our thumb
 			for (int b = first_bone; b < 4; b++) {
-				bone = &digit->bones[b];
+				//bone = &digit->bones[b];
+        bone = &digit->bone(b)
 
 				// We calculate rotation with LeapC's quarternion, I couldn't get this to work right.
 				// This gives our rotation in world space which we need to change to the rotation diffence
@@ -470,11 +510,15 @@ void GDLMSensor::update_hand_position(GDLMSensor::hand_data *p_hand_data, LEAP_H
 				// Basis bone_rotation(quat);
 
 				// We calculate rotation based on our next joint position
+				// Vector3 bone_pos(
+				// 		bone->next_joint.x * world_scale,
+				// 		bone->next_joint.y * world_scale,
+				// 		bone->next_joint.z * world_scale);
+        Leap::Vector nextJoint = bone.nextJoint();
 				Vector3 bone_pos(
-						bone->next_joint.x * world_scale,
-						bone->next_joint.y * world_scale,
-						bone->next_joint.z * world_scale);
-
+						nextJoint.x * world_scale,
+						nextJoint.y * world_scale,
+						nextJoint.z * world_scale);
 				// transform it based on our last locale
 				bone_pos = parent_inverse.xform(bone_pos);
 				// remove previous position to get our delta
@@ -625,8 +669,9 @@ void GDLMSensor::delete_hand(GDLMSensor::hand_data *p_hand_data) {
 
 // our Godot physics process, runs within the physic thread and is responsible for updating physics related stuff
 void GDLMSensor::_physics_process(float delta) {
-	LEAP_TRACKING_EVENT *interpolated_frame = NULL;
-	const LEAP_TRACKING_EVENT *frame = NULL;
+	//LEAP_TRACKING_EVENT *interpolated_frame = NULL;
+	//const LEAP_TRACKING_EVENT *frame = NULL;
+  const Leap::Frame *frame = NULL;
 	uint64_t arvr_frame_usec;
 
 	// We're getting our measurements in mm, want them in m
@@ -650,20 +695,21 @@ void GDLMSensor::_physics_process(float delta) {
 	}
 
 	// update our timing
-	if (clock_synchronizer != NULL) {
+	// if (clock_synchronizer != NULL) {
 		uint64_t godot_usec = OS::get_singleton()->get_ticks_msec() * 1000; // why does godot not give us usec while it records it, grmbl...
-		uint64_t leap_usec = LeapGetNow();
-		LeapUpdateRebase(clock_synchronizer, godot_usec, leap_usec);
-	}
+	// 	uint64_t leap_usec = LeapGetNow();
+	// 	LeapUpdateRebase(clock_synchronizer, godot_usec, leap_usec);
+	// }
 
 	// get our frame, either interpolated or latest
-	if (arvr && clock_synchronizer != NULL && arvr_frame_usec != 0) {
+	if (arvr && arvr_frame_usec != 0) {
 		// Get our leap motion clock value at the timing on which we expect our hmd_transform to be.
 		// This will never be exact science as we do not know how much of a timewarp Oculus/OpenVR has applied..
-		int64_t leap_target_usec;
-		uint64_t target_frame_size;
-		LeapRebaseClock(clock_synchronizer, arvr_frame_usec, &leap_target_usec);
+		// int64_t leap_target_usec;
+		// uint64_t target_frame_size;
+		// LeapRebaseClock(clock_synchronizer, arvr_frame_usec, &leap_target_usec);
 
+    /*
 		// we need to allocate the right amount of memory to store our interpolated frame data at our timestamp
 		eLeapRS result = LeapGetFrameSize(leap_connection, leap_target_usec, &target_frame_size);
 		if (result == eLeapRS_Success) {
@@ -684,6 +730,9 @@ void GDLMSensor::_physics_process(float delta) {
 				}
 			}
 		}
+    */
+    frame = controller.frame();
+
 	} else {
 		// ok lets process our last frame. Note that leap motion says it caches these so I'm assuming they
 		// are valid for a few frames.
@@ -694,12 +743,14 @@ void GDLMSensor::_physics_process(float delta) {
 	if (frame == NULL) {
 		// we don't have a frame yet, or we failed upstairs..
 		return;
-	} else if (!arvr && (last_frame_id == frame->info.frame_id)) {
+	//} else if (!arvr && (last_frame_id == frame->info.frame_id)) {
+	} else if (!arvr && (last_frame_id == frame.id())) {
 		// we already parsed this, no need to do this. In ARVR we may need to do more
 		return;
 	}
 
-	last_frame_id = frame->info.frame_id;
+	//last_frame_id = frame->info.frame_id;
+	last_frame_id = frame.id();
 
 	// Lets process our frames...
 
@@ -713,19 +764,24 @@ void GDLMSensor::_physics_process(float delta) {
 	}
 
 	// process the hands we're getting from leap motion
-	for (uint32_t h = 0; h < frame->nHands; h++) {
-		LEAP_HAND *hand = &frame->pHands[h];
-		int type = hand->type == eLeapHandType_Left ? 0 : 1;
+	//for (uint32_t h = 0; h < frame->nHands; h++) {
+	for (uint32_t h = 0; h < frame.hands().count(); h++) {
+		//LEAP_HAND *hand = &frame->pHands[h];
+		Leap::Hand *hand = &frame.hands()[h];
+		//int type = hand->type == eLeapHandType_Left ? 0 : 1;
+		int type = hand->isLeft() ? 0 : 1;
 
 		// see if we already have a scene for this hand
-		hand_data *hd = find_hand_by_id(type, hand->id);
+		//hand_data *hd = find_hand_by_id(type, hand->id);
+		hand_data *hd = find_hand_by_id(type, hand->id());
 		if (hd == NULL) {
 			// nope? then see if we can find a hand we lost tracking for
 			hd = find_unused_hand(type);
 		}
 		if (hd == NULL) {
 			// nope? time to get a new hand
-			hd = new_hand(type, hand->id);
+			//hd = new_hand(type, hand->id);
+			hd = new_hand(type, hand->id());
 			if (hd != NULL) {
 				hand_nodes.push_back(hd);
 			}
@@ -734,7 +790,8 @@ void GDLMSensor::_physics_process(float delta) {
 			// yeah! mark as used and relate to our hand
 			hd->active_this_frame = true;
 			hd->unused_frames = 0;
-			hd->leap_id = hand->id;
+			//hd->leap_id = hand->id;
+			hd->leap_id = hand->id();
 
 			// and update
 			update_hand_data(hd, hand);
@@ -763,15 +820,16 @@ void GDLMSensor::_physics_process(float delta) {
 	}
 
 	// free our buffer if we allocated it
-	if (interpolated_frame != NULL) {
-		::free(interpolated_frame);
-	}
+	// if (interpolated_frame != NULL) {
+	// 	::free(interpolated_frame);
+	// }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // All methods below here are running in our thread!!
 
 /** Translates eLeapRS result codes into a human-readable string. */
+/* 
 const char *GDLMSensor::ResultString(eLeapRS r) {
 	switch (r) {
 		case eLeapRS_Success: return "eLeapRS_Success";
@@ -797,16 +855,32 @@ const char *GDLMSensor::ResultString(eLeapRS r) {
 		default: return "unknown result type.";
 	}
 }
+*/
 
-void GDLMSensor::handleConnectionEvent(const LEAP_CONNECTION_EVENT *connection_event) {
-	// log..
-	printf("LeapMotion - connected to leap motion\n");
+// void GDLMSensor::handleConnectionEvent(const LEAP_CONNECTION_EVENT *connection_event) {
+// 	// log..
+// 	printf("LeapMotion - connected to leap motion\n");
 
-	// update our status
-	set_is_connected(true);
+// 	// update our status
+// 	set_is_connected(true);
+// }
+
+void GDLMListener::onConnect(const Leap::Controller &) {
+  	printf("LeapMotion - connected to leap motion\n");
+
+  	// update our status
+  	set_is_connected(true);
 }
 
-void GDLMSensor::handleConnectionLostEvent(const LEAP_CONNECTION_LOST_EVENT *connection_lost_event) {
+// void GDLMSensor::handleConnectionLostEvent(const LEAP_CONNECTION_LOST_EVENT *connection_lost_event) {
+// 	// update our status
+// 	set_is_connected(false);
+
+// 	// log...
+// 	printf("LeapMotion - connection lost\n");
+// }
+
+void GDLMListener::onDisconnect(const Leap::Controller &) {
 	// update our status
 	set_is_connected(false);
 
@@ -814,6 +888,7 @@ void GDLMSensor::handleConnectionLostEvent(const LEAP_CONNECTION_LOST_EVENT *con
 	printf("LeapMotion - connection lost\n");
 }
 
+/*
 void GDLMSensor::handleDeviceEvent(const LEAP_DEVICE_EVENT *device_event) {
 	// copied from the SDK, just record this, not sure yet if we need to remember any of this..
 	LEAP_DEVICE deviceHandle;
@@ -856,12 +931,30 @@ void GDLMSensor::handleDeviceEvent(const LEAP_DEVICE_EVENT *device_event) {
 	::free(deviceProperties.serial);
 	LeapCloseDevice(deviceHandle);
 }
+*/
 
+void GDLMListener::onDeviceChange(const Leap::Controller &) {
+  printf("Opening new device.\n");
+  set_last_device(controller->devices()[0]);
+}
+
+void GDLMListener::onDeviceFailure(const Leap::Controller &) {
+  printf("Device has failed.\n");
+}
+
+/*
 void GDLMSensor::handleDeviceLostEvent(const LEAP_DEVICE_EVENT *device_event) {
 	// just log for now
 	printf("LeapMotion - lost device\n");
 }
+*/
 
+void GDLMListener::onDisconnect(const Leap::Controller &) {
+	// just log for now
+	printf("LeapMotion - Leap Motion daemon/service has been disconnected from your application.\n");
+}
+
+/*
 void GDLMSensor::handleDeviceFailureEvent(const LEAP_DEVICE_FAILURE_EVENT *device_failure_event) {
 	// do something with this
 	// device_failure_event->status, device_failure_event->hDevice
@@ -869,7 +962,9 @@ void GDLMSensor::handleDeviceFailureEvent(const LEAP_DEVICE_FAILURE_EVENT *devic
 	// just log for now
 	printf("LeapMotion - device failure %i\n", device_failure_event->status);
 }
+*/
 
+/*
 void GDLMSensor::handleTrackingEvent(const LEAP_TRACKING_EVENT *tracking_event) {
 	// !BAS! These events supposedly are cached, but for how long is this pointer still usable?
 	// is this a pointer into a round robbin buffer or are we actually better of doing a deep copy?
@@ -878,7 +973,14 @@ void GDLMSensor::handleTrackingEvent(const LEAP_TRACKING_EVENT *tracking_event) 
 
 	set_last_frame(tracking_event); // support polling tracking data from different thread
 }
+*/
+void GDLMListener::onFrame(const Leap::Controller &) {
+	printf("LeapMotion - onFrame\n");
+  Leap::Frame frame = controller.frame();
+  set_last_frame(&frame);
+}
 
+/*
 void GDLMSensor::handleLogEvent(const LEAP_LOG_EVENT *log_event) {
 	// just log for now
 	char lvl[250];
@@ -900,13 +1002,19 @@ void GDLMSensor::handleLogEvent(const LEAP_LOG_EVENT *log_event) {
 	printf("LeapMotion - %s - %lli: %s\n", lvl, log_event->timestamp, log_event->message);
 }
 
-/** Called by serviceMessageLoop() when a log event is returned by LeapPollConnection(). */
+//Called by serviceMessageLoop() when a log event is returned by LeapPollConnection().
 void GDLMSensor::handleLogEvents(const LEAP_LOG_EVENTS *log_events) {
 	for (int i = 0; i < (int)(log_events->nEvents); i++) {
 		handleLogEvent(&log_events->events[i]);
 	}
 }
+*/
 
+void GDLMListener::onLogMessage(const Leap::Controller &, Leap::MessageSeverity severity, int64_t timestamp, const char *msg) {
+	printf("LeapMotion - onLogMessage\n");
+}
+
+/*
 void GDLMSensor::handlePolicyEvent(const LEAP_POLICY_EVENT *policy_event) {
 	// just log for now
 	printf("LeapMotion - policy event");
@@ -923,46 +1031,81 @@ void GDLMSensor::handlePolicyEvent(const LEAP_POLICY_EVENT *policy_event) {
 
 	printf("\n");
 }
+*/
 
+/*
 void GDLMSensor::handleConfigChangeEvent(const LEAP_CONFIG_CHANGE_EVENT *config_change_event) {
 	// do something with this?
 
 	// just log for now
 	printf("LeapMotion - config change event\n");
 }
+*/
 
+/*
 void GDLMSensor::handleConfigResponseEvent(const LEAP_CONFIG_RESPONSE_EVENT *config_response_event) {
 	// do something with this?
 
 	// just log for now
 	printf("LeapMotion - config response event\n");
 }
+*/
 
-/** Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection(). */
+/*
+//Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection().
 void GDLMSensor::handleImageEvent(const LEAP_IMAGE_EVENT *image_event) {
 	// do something with this?
 
 	// just log for now
 	printf("LeapMotion - image event\n");
 }
+*
 
-/** Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection(). */
+/*
+//Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection().
 void GDLMSensor::handlePointMappingChangeEvent(const LEAP_POINT_MAPPING_CHANGE_EVENT *point_mapping_change_event) {
 	// do something with this?
 
 	// just log for now
 	printf("LeapMotion - point mapping change event\n");
 }
+*/
 
-/** Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection(). */
+/*
+// Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection().
 void GDLMSensor::handleHeadPoseEvent(const LEAP_HEAD_POSE_EVENT *head_pose_event) {
 	// definately need to implement this once we add an ARVR interface for this.
 
 	// just log for now
 	printf("LeapMotion - head pose event\n");
 }
+*/
+void GDLMListener::onExit(const Leap::Controller &) {
+	printf("LeapMotion - onExit\n");
+}
+void GDLMListener::onFocusGained(const Leap::Controller &) {
+	printf("LeapMotion - onFocusGained\n");
+}
+void GDLMListener::onFocusLost(const Leap::Controller &) {
+	printf("LeapMotion - onFocusLost\n");
+}
+void GDLMListener::onImages(const Leap::Controller &) {
+	printf("LeapMotion - onImages\n");
+}
+void GDLMListener::onInit(const Leap::Controller &) {
+	printf("LeapMotion - onInit\n");
+}
+void GDLMListener::onServiceChange(const Leap::Controller &) {
+	printf("LeapMotion - onServiceChange\n");
+}
+void GDLMListener::onServiceConnect(const Leap::Controller &) {
+	printf("LeapMotion - onServiceConnect\n");
+}
+void GDLMListener::onServiceDisconnect(const Leap::Controller &) {
+	printf("LeapMotion - onServiceDisconnect\n");
+}
 
-
+/*
 void GDLMSensor::lm_main(GDLMSensor *p_sensor) {
 	eLeapRS result;
 	LEAP_CONNECTION_MESSAGE msg;
@@ -1033,3 +1176,4 @@ void GDLMSensor::lm_main(GDLMSensor *p_sensor) {
 		}
 	}
 }
+*/
