@@ -23,21 +23,39 @@
 
 namespace godot {
 
+class GDLMListener : public Leap::Listener {
+  public:
+    virtual void onConnect(const Leap::Controller&);
+    virtual void onDeviceChange(const Leap::Controller&);
+    virtual void onDeviceFailure(const Leap::Controller&);
+    virtual void onDisconnect(const Leap::Controller&);
+    virtual void onExit(const Leap::Controller&);
+    virtual void onFocusGained(const Leap::Controller&);
+    virtual void onFocusLost(const Leap::Controller&);
+    virtual void onFrame(const Leap::Controller&);
+    virtual void onImages(const Leap::Controller&);
+    virtual void onInit(const Leap::Controller&);
+    //virtual void onLogMessage(const Leap::Controller&, MessageSeverity severity, int64_t timestamp, const char *msg);
+    virtual void onServiceChange(const Leap::Controller&);
+    virtual void onServiceConnect(const Leap::Controller&);
+    virtual void onServiceDisconnect(const Leap::Controller&);
+};
+
 class GDLMSensor : public Spatial {
+	//LEAP_CONNECTION leap_connection;
+  Leap::Controller controller;
 	GODOT_CLASS(GDLMSensor, Spatial)
 
 private:
-	//LEAP_CONNECTION leap_connection;
-  Leap::Controller controller;
   GDLMListener listener;
 
 	//LEAP_CLOCK_REBASER clock_synchronizer;
 
 	//const LEAP_TRACKING_EVENT *last_frame;
-  const Leap::Frame *last_frame;
+  Leap::Frame *last_frame;
 
 	//LEAP_DEVICE_INFO *last_device;
-  Leap::Device *last_device
+  Leap::Device *last_device;
 
 	//long long int last_frame_id;
   int64_t last_frame_id;
@@ -103,9 +121,9 @@ protected:
 	//void unlock();
 
 	//const LEAP_TRACKING_EVENT *get_last_frame();
-  const Leap::Frame *get_last_frame();
+  Leap::Frame *get_last_frame();
 	//void set_last_frame(const LEAP_TRACKING_EVENT *p_frame);
-  void set_last_frame(const Leap::Frame *p_frame);
+  void set_last_frame(Leap::Frame *p_frame);
 	//const LEAP_DEVICE_INFO *get_last_device();
   const Leap::Device *get_last_device();
 	//void set_last_device(const LEAP_DEVICE_INFO *p_device);
@@ -155,23 +173,6 @@ public:
 	String get_right_hand_scene() const;
 	void set_right_hand_scene(String p_resource);
 	void _physics_process(float delta);
-};
-
-class GDLMListener : public Leap::Listener {
-  public:
-    virtual void onConnect(const Leap::Controller&);
-    virtual void onDeviceChange(const Leap::Controller&);
-    virtual void onDeviceFailure(const Leap::Controller&);
-    virtual void onDisconnect(const Leap::Controller&);
-    virtual void onExit(const Leap::Controller&);
-    virtual void onFocusGained(const Leap::Controller&);
-    virtual void onFrame(const Leap::Controller&);
-    virtual void onImages(const Leap::Controller&);
-    virtual void onInit(const Leap::Controller&);
-    virtual void onLogMessage(const Leap::Controller&, Leap::MessageSeverity severity, int64_t timestamp, const char *msg);
-    virtual void onServiceChange(const Leap::Controller&);
-    virtual void onServiceConnect(const Leap::Controller&);
-    virtual void onServiceDisconnect(const Leap::Controller&);
 };
 
 } // namespace godot

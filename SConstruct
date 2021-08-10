@@ -86,7 +86,12 @@ elif env['platform'] in ('x11', 'linux'):
     else:
         env.Append(CCFLAGS = ['-fPIC', '-g','-O3', '-std=c++17'])
     env.Append(CXXFLAGS='-std=c++0x')
+    env.Append(CXXFLAGS=["-fpermissive"])
     env.Append(LINKFLAGS = ['-Wl,-R,\'$$ORIGIN\''])
+    if env['bits'] == '64':
+        leapsdk_lib = 'libLeap.so' # leapsdk_lib # + 'lib/x64/libLeap.so'
+    else:
+        leapsdk_lib = 'libLeap.so' # leapsdk_lib # + 'lib/x86/libLeap.so'
 
 # Complete godot-cpp library path
 if env['target'] in ('debug', 'd'):
@@ -108,7 +113,7 @@ env.Append(CPPPATH=[
 ])
 
 # Add our godot-cpp library
-env.Append(LIBPATH=[godot_cpp_path + 'bin/'])
+env.Append(LIBPATH=[godot_cpp_path + 'bin/', 'LeapSDK/lib/x64/'])
 env.Append(LIBS=[godot_cpp_library, leapsdk_lib])
 
 # Add our sources
