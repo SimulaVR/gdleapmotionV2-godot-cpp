@@ -86,7 +86,6 @@ elif env['platform'] in ('x11', 'linux'):
     else:
         env.Append(CCFLAGS = ['-fPIC', '-g','-O3', '-std=c++17'])
     env.Append(CXXFLAGS='-std=c++0x')
-    env.Append(CXXFLAGS=["-fpermissive"])
     env.Append(LINKFLAGS = ['-Wl,-R,\'$$ORIGIN\''])
     if env['bits'] == '64':
         leapsdk_lib = 'libLeap.so' # leapsdk_lib # + 'lib/x64/libLeap.so'

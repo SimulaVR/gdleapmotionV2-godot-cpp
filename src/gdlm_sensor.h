@@ -52,7 +52,7 @@ private:
 	//LEAP_CLOCK_REBASER clock_synchronizer;
 
 	//const LEAP_TRACKING_EVENT *last_frame;
-  Leap::Frame *last_frame;
+  Leap::Frame last_frame;
 
 	//LEAP_DEVICE_INFO *last_device;
   Leap::Device *last_device;
@@ -121,9 +121,9 @@ protected:
 	//void unlock();
 
 	//const LEAP_TRACKING_EVENT *get_last_frame();
-  Leap::Frame *get_last_frame();
+  Leap::Frame get_last_frame();
 	//void set_last_frame(const LEAP_TRACKING_EVENT *p_frame);
-  void set_last_frame(Leap::Frame *p_frame);
+  void set_last_frame(Leap::Frame p_frame);
 	//const LEAP_DEVICE_INFO *get_last_device();
   const Leap::Device *get_last_device();
 	//void set_last_device(const LEAP_DEVICE_INFO *p_device);

@@ -1,4 +1,5 @@
 #include "gdlm_sensor.h"
+#include <iostream>
 
 #define PI 3.14159265359f
 
@@ -60,7 +61,6 @@ GDLMSensor::GDLMSensor() {
 	arvr = false;
 	keep_last_hand = true;
 	smooth_factor = 0.5;
-	last_frame = NULL;
 	last_device = NULL;
 	last_frame_id = 0;
 	keep_hands_for_frames = 60;
@@ -123,7 +123,7 @@ GDLMSensor::~GDLMSensor() {
 	}
 
 	// and clear this JIC
-	last_frame = NULL;
+	last_frame = Leap::Frame();
 
 	// finally clean up hands, note that we don't need to free our scenes because they will be removed by Godot.
 	while (hand_nodes.size() > 0) {
@@ -207,9 +207,9 @@ bool GDLMSensor::wait_for_connection(int timeout, int waittime) {
 }
 
 //const LEAP_TRACKING_EVENT *GDLMSensor::get_last_frame() {
-Leap::Frame *GDLMSensor::get_last_frame() {
+Leap::Frame GDLMSensor::get_last_frame() {
 	//const LEAP_TRACKING_EVENT *ret;
-	Leap::Frame *ret;
+	Leap::Frame ret;
 
 	// lock();
 	ret = last_frame;
@@ -219,7 +219,7 @@ Leap::Frame *GDLMSensor::get_last_frame() {
 }
 
 //void GDLMSensor::set_last_frame(const LEAP_TRACKING_EVENT *p_frame) {
-void GDLMSensor::set_last_frame(Leap::Frame *p_frame) {
+void GDLMSensor::set_last_frame(Leap::Frame p_frame) {
 	// lock();
 	last_frame = p_frame;
 	// unlock();
@@ -678,7 +678,7 @@ void GDLMSensor::_physics_process(float delta) {
 	//LEAP_TRACKING_EVENT *interpolated_frame = NULL;
 	//const LEAP_TRACKING_EVENT *frame = NULL;
   printf("_physics_process\n");
-  Leap::Frame * frame;
+  Leap::Frame frame;
 	uint64_t arvr_frame_usec;
 
 	// We're getting our measurements in mm, want them in m
@@ -738,8 +738,8 @@ void GDLMSensor::_physics_process(float delta) {
 			}
 		}
     */
-    frame = &controller.frame();
-    last_frame = &controller.frame(); //hack
+    frame = controller.frame();
+    last_frame = controller.frame(); //hack
 
 	} else {
 		// ok lets process our last frame. Note that leap motion says it caches these so I'm assuming they
@@ -747,18 +747,18 @@ void GDLMSensor::_physics_process(float delta) {
 		frame = get_last_frame();
 	}
 
+  auto numHands = controller.frame().hands().count();
+  printf ("numHands: %d\n", numHands);
+  frame = controller.frame(); //haaack
 	// was everything above successful?
-	if (frame == NULL) {
-		// we don't have a frame yet, or we failed upstairs..
-		return;
-	//} else if (!arvr && (last_frame_id == frame->info.frame_id)) {
-	} else if (!arvr && (last_frame_id == frame->id())) {
+      if (!arvr && (last_frame_id == frame.id())) {
 		// we already parsed this, no need to do this. In ARVR we may need to do more
+    printf("physics process returning early2\n");
 		return;
 	}
 
 	//last_frame_id = frame->info.frame_id;
-	last_frame_id = frame->id();
+	last_frame_id = frame.id();
 
 	// Lets process our frames...
 
@@ -773,15 +773,15 @@ void GDLMSensor::_physics_process(float delta) {
 
 	// process the hands we're getting from leap motion
 	//for (uint32_t h = 0; h < frame->nHands; h++) {
-	for (uint32_t h = 0; h < frame->hands().count(); h++) {
+	for (uint32_t h = 0; h < frame.hands().count(); h++) {
 		//LEAP_HAND *hand = &frame->pHands[h];
-		Leap::Hand *hand = &frame->hands()[h];
+		Leap::Hand hand = frame.hands()[h];
 		//int type = hand->type == eLeapHandType_Left ? 0 : 1;
-		int type = hand->isLeft() ? 0 : 1;
+		int type = hand.isLeft() ? 0 : 1;
 
 		// see if we already have a scene for this hand
 		//hand_data *hd = find_hand_by_id(type, hand->id);
-		hand_data *hd = find_hand_by_id(type, hand->id());
+		hand_data *hd = find_hand_by_id(type, hand.id());
 		if (hd == NULL) {
 			// nope? then see if we can find a hand we lost tracking for
 			hd = find_unused_hand(type);
@@ -789,7 +789,7 @@ void GDLMSensor::_physics_process(float delta) {
 		if (hd == NULL) {
 			// nope? time to get a new hand
 			//hd = new_hand(type, hand->id);
-			hd = new_hand(type, hand->id());
+			hd = new_hand(type, hand.id());
 			if (hd != NULL) {
 				hand_nodes.push_back(hd);
 			}
@@ -799,11 +799,11 @@ void GDLMSensor::_physics_process(float delta) {
 			hd->active_this_frame = true;
 			hd->unused_frames = 0;
 			//hd->leap_id = hand->id;
-			hd->leap_id = hand->id();
+			hd->leap_id = hand.id();
 
 			// and update
-			update_hand_data(hd, hand);
-			update_hand_position(hd, hand);
+			update_hand_data(hd, &hand);
+			update_hand_position(hd, &hand);
 
 			// should make sure hand is visible
 		}
@@ -986,10 +986,21 @@ void GDLMSensor::handleTrackingEvent(const LEAP_TRACKING_EVENT *tracking_event) 
 }
 */
 void GDLMListener::onFrame(const Leap::Controller &controller) {
+/*
 	printf("LeapMotion - onFrame\n");
   // Leap::Frame frame = controller->frame();
   // GDLMSensor *sensor = (GDLMSensor *)controller;
   // sensor->set_last_frame(&frame);
+  // Get the most recent frame and report some basic information
+  const Leap::Frame frame = controller.frame();
+  std::cout << "Frame id: " << frame.id()
+            << ", timestamp: " << frame.timestamp()
+            << ", hands: " << frame.hands().count()
+            << ", extended fingers: " << frame.fingers().extended().count()
+            << ", tools: " << frame.tools().count()
+            << ", gestures: " << frame.gestures().count() << std::endl;
+            */
+
 }
 
 /*
